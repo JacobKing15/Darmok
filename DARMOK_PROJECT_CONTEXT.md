@@ -30,15 +30,15 @@
 | Detector      | Recall | Precision | Target  | Status     |
 |---|---|---|---|---|
 | PrivateKey    | 1.000  | 1.000     | ≥ 0.99  | ✓ PASS     |
-| JWT           | 0.997  | 0.952     | ≥ 0.99  | ✓ PASS      |
-| ApiKey        | —      | —         | ≥ 0.99  | not started |
+| JWT           | 1.000  | 1.000     | ≥ 0.99  | ✓ PASS      |
+| ApiKey        | 1.000  | 1.000     | ≥ 0.99  | ✓ PASS      |
 | UrlCredential | —      | —         | ≥ 0.99  | not started |
 | Email         | —      | —         | ≥ 0.95  | not started |
 | IpAddress     | —      | —         | ≥ 0.95  | not started |
 | CreditCard    | —      | —         | ≥ 0.95  | not started |
 
 **Last Updated:** 2026-02-28
-**Next Action:** Implement `ApiKeyDetector` in `darmok/detectors/api_keys.py`. Run `python benchmark/run.py`. Verify recall ≥ 0.99 passes. Then move to `UrlCredentialDetector`. Do not skip ahead.
+**Next Action:** Implement `UrlCredentialDetector` in `darmok/detectors/urls.py`. Run `python benchmark/run.py`. Verify recall ≥ 0.99 passes. Then move to `EmailDetector`. Do not skip ahead.
 
 ## Companion Documents
 - `docs/detector_spec.md` — canonical detector specification. All implementations build against this.
