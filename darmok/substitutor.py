@@ -7,7 +7,10 @@ Rules (from DARMOK_PROJECT_CONTEXT.md §Pipeline Stages):
   - Overlapping spans resolved by pipeline before substitution is called
     (overlap resolution lives in the pipeline, not here).
 
-Skeleton — not yet implemented.
+Preconditions for substitute():
+  - results must be non-overlapping (caller's responsibility)
+  - every DetectionResult must have placeholder set (registry sets it before
+    substitution is called)
 """
 
 from __future__ import annotations
@@ -32,9 +35,32 @@ class Substitutor:
         """
         Replace all detected spans with their assigned placeholders.
 
-        Returns:
-          (substituted_text, results_applied_sorted_by_span)
+        Processes results in span-start order (left to right).  Caller must
+        ensure results are non-overlapping before calling this method.
 
-        Raises NotImplementedError until implemented.
+        Returns:
+          (substituted_text, results_applied_sorted_by_span_start)
+
+        Raises:
+          ValueError if any result has placeholder=None.
         """
-        raise NotImplementedError("Substitutor.substitute() not yet implemented")
+        sorted_results = sorted(results, key=lambda r: r.span[0])
+
+        parts: list[str] = []
+        pos = 0
+        applied: list[DetectionResult] = []
+
+        for r in sorted_results:
+            start, end = r.span
+            if r.placeholder is None:
+                raise ValueError(
+                    f"DetectionResult.placeholder is None — registry must assign "
+                    f"placeholders before substitution is called. Result: {r!r}"
+                )
+            parts.append(text[pos:start])
+            parts.append(r.placeholder)
+            pos = end
+            applied.append(r)
+
+        parts.append(text[pos:])
+        return "".join(parts), applied

@@ -8,11 +8,17 @@ Security model (from DARMOK_PROJECT_CONTEXT.md §Reconstructor — Injection Saf
   - This closes two attack vectors:
       1. Arbitrary vault expansion (attacker-controlled LLM output → secret exfil)
       2. Fabricated placeholder confusion (LLM-generated look-alikes are flagged)
-
-Skeleton — not yet implemented.
 """
 
 from __future__ import annotations
+
+import re
+
+# Matches placeholders of the form [sess_a3f9b2:CATEGORY_NAME_1]
+# Session ID: 6 lowercase hex chars
+# Category:   UPPER_SNAKE_CASE, starting with an uppercase letter
+# Index:      one or more digits
+_PLACEHOLDER_RE = re.compile(r"\[sess_[0-9a-f]{6}:[A-Z][A-Z0-9_]*_\d+\]")
 
 
 class Reconstructor:
@@ -34,7 +40,12 @@ class Reconstructor:
 
         Placeholder-shaped strings not in outbound_manifest are flagged inline
         rather than expanded or silently passed through.
-
-        Raises NotImplementedError until implemented.
         """
-        raise NotImplementedError("Reconstructor.reconstruct() not yet implemented")
+
+        def expand(m: re.Match) -> str:  # type: ignore[type-arg]
+            placeholder = m.group(0)
+            if placeholder in outbound_manifest:
+                return outbound_manifest[placeholder]
+            return f"⚠ {placeholder} — not in outbound manifest, left unexpanded"
+
+        return _PLACEHOLDER_RE.sub(expand, response_text)

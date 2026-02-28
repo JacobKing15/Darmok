@@ -21,11 +21,13 @@
 
 ---
 
-**Status:** Phase 1 — all 7 detectors complete, all tier targets met. Awaiting full-pipeline benchmark (Phase 1 exit gate).
+**Status:** Phase 1 — all 7 detectors complete + full pipeline implemented. Exit gate item 2 passed.
 
-*Test infrastructure* — Updated from `sanitizer.*` to `darmok.*`. Category names are snake_case throughout (`private_key`, `jwt`, `api_key`, `url_credential`, `email`, `ip_address`, `credit_card`). Harness uses `d.raw_value`, tier-aware `TierResult`/`CATEGORY_TIER`, per-tier recall/precision targets. Synthetic suite: 50 cases per category + 100 negative cases = 460 total. Standalone benchmark runner at `benchmark/run.py`.
+*Test infrastructure* — Updated from `sanitizer.*` to `darmok.*`. Category names are snake_case throughout (`private_key`, `jwt`, `api_key`, `url_credential`, `email`, `ip_address`, `credit_card`). Harness uses `d.raw_value`, tier-aware `TierResult`/`CATEGORY_TIER`, per-tier recall/precision targets. Synthetic suite: 50 cases per category + 100 negative cases = 460 total. Standalone benchmark runner at `benchmark/run.py` (shows per-detector + full-pipeline sections).
 
-*Benchmark (2026-02-28)* — pytest: 39 pass, 12 skip (stub detectors), 17 fail (unit tests for unimplemented detectors — expected). 19 adversarial tests all passing.
+*Pipeline* — `darmok/pipeline.py`: `Pipeline.run()` (detect → overlap-resolve → register → substitute → manifest), `Pipeline.detect_resolved()` (dry-run / benchmarking), `Pipeline.reconstruct()`. `Substitutor` and `Reconstructor` fully implemented.
+
+*Benchmark (2026-02-28)* — pytest: 99 pass, 0 skip, 0 fail. 19 adversarial tests passing. 31 pipeline tests passing (overlap resolution, round-trip fidelity, deduplication, injection safety, tier targets through pipeline).
 
 | Detector      | Recall | Precision | Target  | Status     |
 |---|---|---|---|---|
@@ -38,7 +40,7 @@
 | CreditCard    | 1.000  | 1.000     | ≥ 0.95  | ✓ PASS      |
 
 **Last Updated:** 2026-02-28
-**Next Action:** Phase 1 detector implementation complete — all 7 detectors passing tier targets. Next: full-pipeline benchmark with overlap resolution active (Phase 1 exit gate, item 2 of 7).
+**Next Action:** Phase 1 exit gate items 1 ✓ and 2 ✓ done. Next: item 3 — red-team exercise against `.env`, Terraform, K8s manifest, CI/CD YAML with Faker-generated values.
 
 ## Companion Documents
 - `docs/detector_spec.md` — canonical detector specification. All implementations build against this.
