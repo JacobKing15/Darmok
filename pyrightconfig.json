@@ -1,0 +1,12 @@
+{
+  "pythonVersion": "3.11",
+  "venvPath": ".",
+  "include": [
+    "darmok",
+    "tests",
+    "benchmark"
+  ],
+  "extraPaths": [
+    "."
+  ]
+}
