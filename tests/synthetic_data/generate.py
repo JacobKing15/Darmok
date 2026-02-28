@@ -193,7 +193,7 @@ def generate_email_cases(n: int) -> list[TestCase]:
     cases = []
     templates = _EMAIL_TEMPLATES
     for i in range(n):
-        email = fake.email()
+        email = fake.free_email()
         text, value = templates[i % len(templates)](email)
         cases.append(TestCase(
             name=f"email_{i:03d}",
@@ -302,7 +302,7 @@ def generate_mixed_cases(n: int) -> list[TestCase]:
     """
     cases = []
     for i in range(n):
-        email = fake.email()
+        email = fake.free_email()
         ip = fake.ipv4_private()
         key = _fake_api_key()
         text = (

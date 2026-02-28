@@ -33,12 +33,12 @@
 | JWT           | 1.000  | 1.000     | ≥ 0.99  | ✓ PASS     |
 | ApiKey        | 1.000  | 1.000     | ≥ 0.99  | ✓ PASS     |
 | UrlCredential | 1.000  | 1.000     | ≥ 0.99  | ✓ PASS     |
-| Email         | —      | —         | ≥ 0.95  | not started |
+| Email         | 1.000  | 1.000     | ≥ 0.95  | ✓ PASS      |
 | IpAddress     | —      | —         | ≥ 0.95  | not started |
 | CreditCard    | —      | —         | ≥ 0.95  | not started |
 
 **Last Updated:** 2026-02-28
-**Next Action:** Implement `EmailDetector` in `darmok/detectors/email.py`. Run `python benchmark/run.py`. Verify recall ≥ 0.95 passes. Then move to `IpAddressDetector`. Do not skip ahead.
+**Next Action:** Implement `IpAddressDetector` in `darmok/detectors/ip_address.py`. Run `python benchmark/run.py`. Verify recall ≥ 0.95 passes. Then move to `CreditCardDetector`. Do not skip ahead.
 
 ## Companion Documents
 - `docs/detector_spec.md` — canonical detector specification. All implementations build against this.
