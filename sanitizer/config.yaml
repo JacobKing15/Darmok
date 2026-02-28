@@ -1,0 +1,21 @@
+detection:
+  confidence_threshold: 0.75
+  auto_redact_above: 0.85
+  flag_for_review_below: 0.85
+
+categories:
+  emails: true
+  ip_addresses: true
+  api_keys: true
+  phone_numbers: false
+  credit_cards: true
+
+output:
+  placeholder_format: "[{TYPE}_{INDEX}]"
+  show_summary: true
+  verbose: false
+
+custom_patterns:
+  - name: "Internal Employee ID"
+    pattern: "EMP-\\d{6}"
+    label: "EMP_ID"

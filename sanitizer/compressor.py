@@ -1,0 +1,1 @@
+# Rule-based prompt compressor (Phase 1 Layer 1) — removes filler phrases, normalizes whitespace, deduplicates repeated context, and cleans redundant code comments; deterministic and fully auditable, targets 20-40% token reduction
