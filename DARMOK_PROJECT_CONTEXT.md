@@ -21,7 +21,7 @@
 
 ---
 
-**Status:** Phase 1 in progress.
+**Status:** Phase 1 — all 7 detectors complete, all tier targets met. Awaiting full-pipeline benchmark (Phase 1 exit gate).
 
 *Test infrastructure* — Updated from `sanitizer.*` to `darmok.*`. Category names are snake_case throughout (`private_key`, `jwt`, `api_key`, `url_credential`, `email`, `ip_address`, `credit_card`). Harness uses `d.raw_value`, tier-aware `TierResult`/`CATEGORY_TIER`, per-tier recall/precision targets. Synthetic suite: 50 cases per category + 100 negative cases = 460 total. Standalone benchmark runner at `benchmark/run.py`.
 
@@ -35,10 +35,10 @@
 | UrlCredential | 1.000  | 1.000     | ≥ 0.99  | ✓ PASS     |
 | Email         | 1.000  | 1.000     | ≥ 0.95  | ✓ PASS      |
 | IpAddress     | 1.000  | 1.000     | ≥ 0.95  | ✓ PASS      |
-| CreditCard    | —      | —         | ≥ 0.95  | not started |
+| CreditCard    | 1.000  | 1.000     | ≥ 0.95  | ✓ PASS      |
 
 **Last Updated:** 2026-02-28
-**Next Action:** Implement `CreditCardDetector` in `darmok/detectors/credit_cards.py`. Run `python benchmark/run.py`. Verify recall ≥ 0.95 passes. That completes Phase 1 detector implementation.
+**Next Action:** Phase 1 detector implementation complete — all 7 detectors passing tier targets. Next: full-pipeline benchmark with overlap resolution active (Phase 1 exit gate, item 2 of 7).
 
 ## Companion Documents
 - `docs/detector_spec.md` — canonical detector specification. All implementations build against this.
