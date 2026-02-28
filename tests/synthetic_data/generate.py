@@ -123,7 +123,7 @@ def _fake_timestamp() -> str:
 # ground_truth_value is what we expect the detector to return — usually == value.
 
 _EMAIL_TEMPLATES = [
-    lambda e: (f"{_fake_timestamp()} Authentication failed for user {e} from {fake.ipv4_private()}", e),
+    lambda e: (f"{_fake_timestamp()} Authentication failed for user {e} from {fake.hostname()}", e),
     lambda e: (f'ADMIN_EMAIL = "{e}"', e),
     lambda e: (f"# Send deployment alerts to {e}", e),
     lambda e: (f"Please contact {e} for access requests to the production environment.", e),
