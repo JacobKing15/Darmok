@@ -1,5 +1,4 @@
-# Darmok (formerly PromptB4ke)
-
+# Darmok
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **Darmok** is a CLI privacy firewall for developers, DevOps engineers, and technical users who work with LLMs on real infrastructure data.
