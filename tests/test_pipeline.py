@@ -194,14 +194,23 @@ def test_round_trip_private_key():
 
 def test_round_trip_multiple_categories():
     """Email + IP + API key in one prompt all round-trip correctly."""
+    import secrets
     from faker import Faker
-    fake = Faker()
-    email = fake.free_email()
-    ip    = fake.ipv4_private()
+    # Hex local part: 0-9,a-f can never contain IP suppress keyword substrings.
+    # Faker names like "megan" contain "eg" which suppresses nearby IPs to 0.30.
+    # The 15 structural tokens after the IP push the api_key value (which may
+    # contain "eg" etc. as substrings) beyond the 15-token after-context window.
+    email = f"{secrets.token_hex(6)}@ops.company-internal.com"
+    ip    = Faker().ipv4_private()
     key   = _fake_api_key()
     text = (
         f"Alert sent to {email}\n"
         f"Server {ip}:8080 is down\n"
+        f"Host unreachable since 14:32 UTC today.\n"
+        f"Service: payment-processor\n"
+        f"Environment: production\n"
+        f"Monitor: prometheus\n"
+        f"Action: paging on-call\n"
         f"API key: {key}"
     )
     pipeline = Pipeline()

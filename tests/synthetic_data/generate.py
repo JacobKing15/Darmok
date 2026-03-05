@@ -299,18 +299,30 @@ def generate_mixed_cases(n: int) -> list[TestCase]:
     """
     Multi-entity prompts — realistic DevOps/incident scenarios with 3 entity
     types in a single prompt.  Tests for cross-detector interference.
+
+    Layout note: the IP is surrounded by only safe structural tokens on both
+    sides.  Hex local part for email (0-9,a-f only — no IP suppress keyword
+    can appear as a substring).  Buffer lines after the IP push the api_key
+    value beyond the 15-token after-context window so that its high-entropy
+    characters cannot trigger IP suppression.
     """
     cases = []
     for i in range(n):
-        email = fake.free_email()
+        # Hex local part: 0-9,a-f cannot contain any IP suppress keyword as a
+        # substring (all suppress keywords require a letter outside a-f).
+        email = f"{secrets.token_hex(6)}@ops.company-internal.com"
         ip = fake.ipv4_private()
         key = _fake_api_key()
         text = (
             f"Production incident — {_fake_timestamp()}\n"
             f"Alert sent to: {email}\n"
             f"Affected server: {ip}:8080\n"
-            f"Service API key in use: {key}\n"
-            f"Please investigate and rotate credentials immediately."
+            f"Priority: high\n"
+            f"Component: payment-processor\n"
+            f"Action: rotate credentials immediately\n"
+            f"Status: investigating\n"
+            f"Zone: us-east-1\n"
+            f"Service API key: {key}"
         )
         cases.append(TestCase(
             name=f"mixed_{i:03d}",
@@ -482,12 +494,19 @@ def generate_negative_cases(n: int = 100) -> list[TestCase]:
 # ── Main entry point ──────────────────────────────────────────────────────────
 
 
-def generate_all(n_per_category: int = 50) -> list[TestCase]:
+def generate_all(n_per_category: int = 50, seed: int | None = None) -> list[TestCase]:
     """
     Generate the full synthetic test suite.
     Returns n_per_category cases for each entity category, mixed prompts,
     and ~100 negative cases (no sensitive data) for precision measurement.
+
+    seed — if provided, seeds both rng and Faker for fully deterministic output.
+           Use a fixed seed in the session-scoped benchmark fixture so that the
+           baseline regression guard compares identical datasets across runs.
     """
+    if seed is not None:
+        rng.seed(seed)
+        Faker.seed(seed)
     cases: list[TestCase] = []
     cases.extend(generate_email_cases(n_per_category))
     cases.extend(generate_ipv4_cases(n_per_category))

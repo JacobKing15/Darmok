@@ -7,13 +7,13 @@
 
 ## ⚠ Instructions for Claude Code — Read Before Writing Any Code
 
-1. **Do not start Phase 2 until Phase 1 benchmark targets are fully met.** All three tiers must pass independently: Tier 1 recall ≥ 0.99, Tier 2 recall ≥ 0.95, Tier 3 recall ≥ 0.90. Passing an overall average is not sufficient. Do not begin vault or session work until the benchmark dashboard shows all tiers green.
+1. **Phase 1 and Phase 2 are complete (2026-02-28).** All 7 detectors pass (recall=1.000, precision=1.000). The encrypted vault, session manager, config loader, and all Phase 2 CLI commands are implemented and tested (255 pass, 3 skip Windows chmod, 0 fail). Do not start Phase 3 work without a written specification — Phase 3 has not yet been specced.
 
 2. **Do not implement compression.** Compression has been removed entirely. There is no `compressor.py`. Do not create one. If a task seems to imply compression, stop and flag it.
 
 3. **Read the spec before writing the code.** Before implementing any detector, read `docs/detector_spec.md` in full. Before implementing any vault or session logic, read `docs/vault_failure_modes.md` in full. The spec is the source of truth — do not infer behavior from code structure.
 
-4. **Implement detectors one at a time in this order:** PrivateKey → JWT → ApiKey → UrlCredential → Email → IpAddress → CreditCard. Run the benchmark suite after each. Do not proceed to the next detector until the current one passes its tier target.
+4. **All Phase 1 detectors are complete.** PrivateKey → JWT → ApiKey → UrlCredential → Email → IpAddress → CreditCard — all pass (recall=1.000, precision=1.000). If adding new detectors in a future phase, implement one at a time and run the benchmark suite after each before proceeding.
 
 5. **Do not add features not in this document.** If something seems useful but isn't specified here, stop and ask. Do not build ahead.
 
@@ -21,13 +21,13 @@
 
 ---
 
-**Status:** Phase 1 — all 7 detectors complete + full pipeline implemented. Exit gate item 2 passed.
+**Status: Phase 1 ✓ COMPLETE + Phase 2 ✓ COMPLETE (2026-02-28)**
 
-*Test infrastructure* — Updated from `sanitizer.*` to `darmok.*`. Category names are snake_case throughout (`private_key`, `jwt`, `api_key`, `url_credential`, `email`, `ip_address`, `credit_card`). Harness uses `d.raw_value`, tier-aware `TierResult`/`CATEGORY_TIER`, per-tier recall/precision targets. Synthetic suite: 50 cases per category + 100 negative cases = 460 total. Standalone benchmark runner at `benchmark/run.py` (shows per-detector + full-pipeline sections).
+*Phase 1* — All 7 detectors implemented and benchmarked. Full pipeline with overlap resolution passes the Phase 1 exit gate. Red-team suite (.env, Terraform, K8s, GitHub Actions, mixed incident) passes. Interactive review flow (all 5 actions, post-run summary) verified end-to-end. Adversarial out-of-scope patterns produce zero false positives. Baseline regression guard established.
 
-*Pipeline* — `darmok/pipeline.py`: `Pipeline.run()` (detect → overlap-resolve → register → substitute → manifest), `Pipeline.detect_resolved()` (dry-run / benchmarking), `Pipeline.reconstruct()`. `Substitutor` and `Reconstructor` fully implemented.
+*Phase 2* — Encrypted vault (`darmok/vault.py`, Argon2id + AES-256-GCM), session manager (`darmok/session.py`), and config loader (`darmok/config.py`) implemented. Registry and pipeline wired to vault and config. All Phase 2 CLI commands added (`darmok/main.py`). All 13 vault failure mode tests pass (`tests/test_vault.py`, `tests/test_session.py`, `tests/test_config.py`).
 
-*Benchmark (2026-02-28)* — pytest: 99 pass, 0 skip, 0 fail. 19 adversarial tests passing. 31 pipeline tests passing (overlap resolution, round-trip fidelity, deduplication, injection safety, tier targets through pipeline).
+*Test infrastructure* — Category names are snake_case throughout. Harness uses `d.raw_value`, tier-aware `TierResult`/`CATEGORY_TIER`. Synthetic suite: 50 cases per category + 100 negative cases = 460 total. Standalone benchmark runner at `benchmark/run.py`.
 
 | Detector      | Recall | Precision | Target  | Status     |
 |---|---|---|---|---|
@@ -35,12 +35,12 @@
 | JWT           | 1.000  | 1.000     | ≥ 0.99  | ✓ PASS     |
 | ApiKey        | 1.000  | 1.000     | ≥ 0.99  | ✓ PASS     |
 | UrlCredential | 1.000  | 1.000     | ≥ 0.99  | ✓ PASS     |
-| Email         | 1.000  | 1.000     | ≥ 0.95  | ✓ PASS      |
-| IpAddress     | 1.000  | 1.000     | ≥ 0.95  | ✓ PASS      |
-| CreditCard    | 1.000  | 1.000     | ≥ 0.95  | ✓ PASS      |
+| Email         | 1.000  | 1.000     | ≥ 0.95  | ✓ PASS     |
+| IpAddress     | 1.000  | 1.000     | ≥ 0.95  | ✓ PASS     |
+| CreditCard    | 1.000  | 1.000     | ≥ 0.95  | ✓ PASS     |
 
-**Last Updated:** 2026-02-28
-**Next Action:** Phase 1 exit gate items 1 ✓ and 2 ✓ done. Next: item 3 — red-team exercise against `.env`, Terraform, K8s manifest, CI/CD YAML with Faker-generated values.
+**Full suite (2026-02-28):** 255 pass, 3 skip (Windows chmod — expected), 0 fail — STABLE
+**Next Action:** Phase 3 not yet specced. Do not begin without a written specification.
 
 ## Companion Documents
 - `docs/detector_spec.md` — canonical detector specification. All implementations build against this.
@@ -306,8 +306,14 @@ Note: `--restore` is Phase 2 only. If invoked in Phase 1, print a clear error an
 ### File Structure
 ```
 darmok/
-├── main.py              # CLI entry point
-├── pipeline.py          # Orchestrates stages
+├── main.py              # CLI entry point (Phase 1 + Phase 2 commands)
+├── pipeline.py          # Orchestrates stages; wired to DarmokConfig and Vault
+├── config.py            # DarmokConfig — loads ~/.darmok/config.yaml (Phase 2)
+├── vault.py             # Encrypted vault — Argon2id + AES-256-GCM (Phase 2)
+├── session.py           # SessionManager + SessionMeta (Phase 2)
+├── registry.py          # Entity tracking — in-memory (Phase 1) + vault-backed (Phase 2)
+├── substitutor.py       # Text replacement
+├── reconstructor.py     # Manifest-scoped reconstruction
 ├── detectors/
 │   ├── base.py          # Abstract detector — DetectionResult dataclass lives here
 │   ├── api_keys.py      # PrivateKey, JWT, ApiKey detectors
@@ -315,10 +321,7 @@ darmok/
 │   ├── email.py         # Email detector
 │   ├── ip_address.py    # IpAddress detector
 │   └── credit_cards.py  # CreditCard detector
-├── registry.py          # Entity tracking, placeholder assignment
-├── substitutor.py       # Text replacement
-├── reconstructor.py     # Manifest-scoped reconstruction
-└── config.yaml          # Thresholds, categories, output format
+└── (no config.yaml here — runtime config lives at ~/.darmok/config.yaml)
 ```
 
 `compressor.py` does not exist. Do not create it.
@@ -357,14 +360,14 @@ Always-skip uses SHA-256 hash of raw value stored in vault — never the raw val
 ```
 
 ### Phase 1 Complete When
-All of the following are independently true:
-1. Per-detector benchmarks pass their tier targets in isolation.
-2. Full-pipeline benchmark passes with overlap resolution active — this is the exit gate, not per-detector results.
-3. Red-team exercise complete against `.env`, Terraform, K8s manifest, CI/CD YAML with Faker-generated values.
-4. Interactive review flow functional end-to-end including all four actions and post-run summary.
-5. All documented adversarial out-of-scope patterns produce zero false positives.
-6. Benchmark suite established as the baseline for all future changes.
-7. No compressor.
+**✓ COMPLETE (2026-02-28)** — all of the following independently verified:
+1. ✓ Per-detector benchmarks pass their tier targets in isolation.
+2. ✓ Full-pipeline benchmark passes with overlap resolution active — exit gate passed.
+3. ✓ Red-team exercise complete against `.env`, Terraform, K8s manifest, CI/CD YAML with Faker-generated values.
+4. ✓ Interactive review flow functional end-to-end including all five actions and post-run summary.
+5. ✓ All documented adversarial out-of-scope patterns produce zero false positives.
+6. ✓ Benchmark suite established as the baseline for all future changes.
+7. ✓ No compressor.
 
 ---
 
@@ -394,17 +397,30 @@ All of the following are independently true:
 
 ### CLI Commands Added in Phase 2
 ```bash
+# Vault lifecycle
+darmok --vault-init                                    # Initialize vault (prompts passphrase)
+darmok --vault-reinitialize                            # Destroy and recreate vault (with confirmation)
+darmok --vault-purge-expired                           # Remove all hard-expired sessions
+darmok --vault-compact                                 # VACUUM SQLite free pages
+darmok --vault-rekey                                   # Re-key vault with new passphrase
+
+# Session management
 darmok --session-start "project-name" --input prompt.txt
 darmok --session-resume sess_a3f9b2
-darmok --sessions
-darmok --restore --session sess_a3f9b2 --input response.txt
+darmok --sessions                                      # List all sessions
 darmok --session-end sess_a3f9b2
-darmok --audit sess_a3f9b2
-darmok --vault-purge-expired
-darmok --vault-compact
-darmok --vault-rekey
-darmok --allowlist
-darmok --allowlist-remove <id>
+darmok --audit sess_a3f9b2                             # Show session entity summary
+
+# Reconstruction
+darmok --restore --session sess_a3f9b2 --input response.txt
+
+# Allowlist
+darmok --allowlist                                     # List current allowlist
+darmok --allowlist-remove <id>                         # Remove an entry
+
+# Config and credentials
+darmok --config /path/to/config.yaml                   # Override config file path
+darmok --passphrase-env VAR_NAME                       # Read passphrase from env var (CI/CD — prints security warning)
 ```
 
 ### Passphrase Input
@@ -419,7 +435,15 @@ All 13 failure scenarios specified in `docs/vault_failure_modes.md`. Design prin
 3. **Annotated log** — generated on demand. Shows both placeholder and real value inline. Not persisted.
 
 ### Phase 2 Complete When
-Session close and reopen results in perfect reconstruction. Encryption round-trips cleanly. All 13 vault failure mode tests pass. Session expiry and key zeroing behave correctly under deliberate failure conditions. Schema versioning present and enforced.
+**✓ COMPLETE (2026-02-28)** — all of the following verified:
+- ✓ Session close and reopen results in perfect reconstruction.
+- ✓ Encryption round-trips cleanly (Argon2id KDF + AES-256-GCM).
+- ✓ All 13 vault failure mode tests pass (`tests/test_vault.py`, `tests/test_session.py`).
+- ✓ Session expiry (hard and soft) and key zeroing behave correctly under deliberate failure conditions.
+- ✓ Schema versioning present and enforced (v1.2, migration path from v1.1).
+- ✓ Config loader with all 7 loading rules and validation constraints (`tests/test_config.py`).
+- ✓ Registry vault-backed cross-session deduplication via SHA-256(raw_value) index.
+- ✓ All Phase 2 CLI commands operational.
 
 ---
 
@@ -429,9 +453,11 @@ Darmok exposes its core functionality as importable Python modules. The CLI is a
 
 Key importable surfaces:
 - `darmok.pipeline.Pipeline` — full detection + substitution pipeline
-- `darmok.registry.EntityRegistry` — entity tracking and placeholder assignment
+- `darmok.registry.EntityRegistry` — entity tracking and placeholder assignment (Phase 1 in-memory; Phase 2 vault-backed)
 - `darmok.reconstructor.Reconstructor` — manifest-scoped reconstruction
-- `darmok.vault.Vault` — encrypted vault open/read/write/close
+- `darmok.vault.Vault` — encrypted vault open/read/write/close (Phase 2)
+- `darmok.session.SessionManager` — session lifecycle and metadata (Phase 2)
+- `darmok.config.DarmokConfig` — config loader with Neech override support (Phase 2)
 - `darmok.detectors.*` — individual detectors, each implementing `detect(text: str) -> list[DetectionResult]`
 
 The library API must be stable before Neech Phase 1 begins. Breaking changes to the library API require coordination with Neech development.

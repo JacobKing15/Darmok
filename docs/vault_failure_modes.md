@@ -1,9 +1,9 @@
 # Vault Failure Modes Specification
 **Version:** 1.2
-**Last Updated:** 2026-02-27
+**Last Updated:** 2026-02-28
 **Scope:** Phase 2 — Encrypted Vault and Session Management
 
-> **Phase gate:** This document is Phase 2 only. No vault code exists yet and none should be written until all Phase 1 benchmark targets are independently met (Tier 1 recall ≥ 0.99, Tier 2 recall ≥ 0.95, Tier 3 recall ≥ 0.90). As of 2026-02-28, Phase 1 is in progress — PrivateKeyDetector passes, six detectors remain. See `DARMOK_PROJECT_CONTEXT.md` for current benchmark status.
+> **Status (2026-02-28): Phase 1 and Phase 2 are both complete.** All 7 detectors pass (recall=1.000, precision=1.000). The encrypted vault (`darmok/vault.py`), session manager (`darmok/session.py`), and config loader (`darmok/config.py`) are implemented. All 13 failure mode tests pass in `tests/test_vault.py` and `tests/test_session.py`. See `DARMOK_PROJECT_CONTEXT.md` for the full project status.
 
 **Changelog v1.2:** Updated all file paths from `~/.sanitizer/` to `~/.darmok/` to reflect product rename. Updated CLI command prefix from `python sanitize.py` to `darmok`. Updated schema version references to 1.2. Added F-12 (vault detected in cloud-synced folder). Added F-13 (context doc missing at session start). Added GUI behavior notes to all failure modes — failure messages must surface appropriately in both CLI and desktop GUI contexts. Updated failure mode matrix and testing requirements for F-12 and F-13.
 
@@ -439,4 +439,4 @@ Each failure mode must have a deliberate failure test in the Phase 2 test suite:
 | F-12 | Symlink vault.db into a path matching iCloud Drive pattern, run tool — verify single warn on first open, suppressed on subsequent opens |
 | F-13 | Create project with context.md reference, delete the file, start session — verify warn + skip + session proceeds |
 
-Phase 2 is not complete until all tests pass with the correct behavior.
+**Status (2026-02-28): ✓ All 13 failure mode tests pass.** Phase 2 is complete.

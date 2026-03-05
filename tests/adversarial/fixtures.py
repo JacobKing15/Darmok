@@ -31,6 +31,12 @@ OOS_CASES: list[AdversarialCase] = [
         category_not_expected="email",
         description="HTML entity encoding of @. OOS — requires HTML decode pre-pass.",
     ),
+    AdversarialCase(
+        name="email_dot_bracket_notation",
+        text="Reach john [dot] smith [at] company [dot] com for support.",
+        category_not_expected="email",
+        description="Bracket/word notation for dots and @. OOS — no regex coverage.",
+    ),
 
     # ip_address
     AdversarialCase(
@@ -64,6 +70,31 @@ OOS_CASES: list[AdversarialCase] = [
         text="Token bytes (hex): 736b2d616263313233343536373839",
         category_not_expected="api_key",
         description="Hex-encoded key. OOS — ambiguous with any hex string.",
+    ),
+    AdversarialCase(
+        name="api_key_split_across_lines",
+        text=(
+            "ANTHROPIC_API_KEY=sk-ant-api03-abc123def456\n"
+            "ghi789jkl012mno345pqr678stu901vwx234yz"
+        ),
+        category_not_expected="api_key",
+        description=(
+            "Key split across two lines with no concatenation operator. "
+            "OOS — detector works on raw text without line joining."
+        ),
+    ),
+    AdversarialCase(
+        name="api_key_unicode_homoglyph",
+        text=(
+            # Replace 's' with Cyrillic 'с' (U+0441), 'k' with 'к' (U+043A)
+            # so the prefix looks like sk- but uses non-ASCII chars
+            "ANTHROPIC_API_KEY=\u0441\u043a-ant-api03-abcdefghijklmnopqrstuvwxyz01234567"
+        ),
+        category_not_expected="api_key",
+        description=(
+            "Unicode homoglyph substitution in the key prefix. "
+            "OOS — regex patterns are ASCII-only; homoglyphs break pattern matching."
+        ),
     ),
 
     # url_credential

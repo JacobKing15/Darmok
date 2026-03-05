@@ -1,11 +1,11 @@
 """
-Detection pipeline — orchestrates all Phase 1 stages in order.
+Detection pipeline — orchestrates all Phase 1/2 stages in order.
 
 Stages:
   1. Tokenization  — segments input into logical units
   2. Detection     — detectors run per category (only when mode is on/dry-run)
   3. Scoring       — confidence 0.0–1.0, tier-aware thresholds
-  4. Registry      — in-memory placeholder assignment (Phase 1)
+  4. Registry      — placeholder assignment (in-memory Phase 1, vault-backed Phase 2)
   5. Substitution  — single pass, longer matches first
   6. Manifest      — exact set of outbound placeholders recorded
   7. Output        — clean text + post-run summary
@@ -17,13 +17,20 @@ Library usage (Neech integration):
   pipeline = Pipeline(config_overrides={"redaction_mode": "dry-run"})
   pipeline = Pipeline(config_overrides={"thresholds": {"auto_redact": 0.90}})
 
+  # Phase 2 — with vault:
+  from darmok.vault import Vault
+  vault = Vault(config)
+  vault.open(passphrase)
+  pipeline = Pipeline(vault=vault, session_id="a3f9b2")
+
 The CLI (main.py) is a thin consumer of this class — all logic lives here.
 """
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
+from darmok.config import DarmokConfig
 from darmok.detectors.api_keys import ApiKeyDetector, JwtDetector, PrivateKeyDetector
 from darmok.detectors.base import DetectionResult
 from darmok.detectors.credit_cards import CreditCardDetector
@@ -34,7 +41,8 @@ from darmok.reconstructor import Reconstructor
 from darmok.registry import EntityRegistry
 from darmok.substitutor import Substitutor
 
-_DEFAULT_AUTO_REDACT_THRESHOLD = 0.85  # config.yaml default (thresholds.auto_redact)
+if TYPE_CHECKING:
+    from darmok.vault import Vault
 
 
 def _resolve_overlaps(results: list[DetectionResult]) -> list[DetectionResult]:
@@ -50,9 +58,6 @@ def _resolve_overlaps(results: list[DetectionResult]) -> list[DetectionResult]:
     if not results:
         return []
 
-    # Sort: longest span first, then lower tier (higher risk priority),
-    # then higher confidence.  Greedy selection keeps the first non-overlapping
-    # match at each conflict point.
     sorted_r = sorted(
         results,
         key=lambda r: (-(r.span[1] - r.span[0]), r.tier, -r.confidence),
@@ -85,11 +90,19 @@ class Pipeline:
     The registry is session-scoped: the same Pipeline instance maintains
     placeholder identity across multiple run() calls.  Create a new Pipeline
     to start a new session with a fresh registry.
+
+    Phase 2: pass vault= and session_id= to enable vault-backed persistence.
     """
 
-    def __init__(self, config_overrides: dict[str, Any] | None = None) -> None:
-        self._overrides = config_overrides or {}
-        # TODO Phase 1: load and validate ~/.darmok/config.yaml, merge overrides
+    def __init__(
+        self,
+        config_overrides: dict[str, Any] | None = None,
+        vault: "Vault | None" = None,
+        session_id: str | None = None,
+        expires_at: str | None = None,
+        expiry_type: str = "hard",
+    ) -> None:
+        self._config = DarmokConfig.load(overrides=config_overrides)
         self._detectors = [
             PrivateKeyDetector(),
             JwtDetector(),
@@ -99,35 +112,59 @@ class Pipeline:
             IpAddressDetector(),
             CreditCardDetector(),
         ]
-        self._registry = EntityRegistry()
+        self._registry = EntityRegistry(
+            session_id=session_id,
+            vault=vault,
+            expires_at=expires_at,
+            expiry_type=expiry_type,
+        )
         self._substitutor = Substitutor()
         self._reconstructor = Reconstructor()
 
     @property
     def _threshold(self) -> float:
-        return float(
-            self._overrides.get("thresholds", {}).get(
-                "auto_redact", _DEFAULT_AUTO_REDACT_THRESHOLD
-            )
-        )
+        return self._config.auto_redact_threshold
 
-    def detect_resolved(self, text: str) -> list[DetectionResult]:
+    @property
+    def _tier1_block_threshold(self) -> float:
+        return self._config.tier1_block_threshold
+
+    @property
+    def session_id(self) -> str:
+        """The current session ID (first 6 hex chars of the cryptographic session token)."""
+        return self._registry.session_id
+
+    def detect_candidates(
+        self, text: str, min_confidence: float = 0.0
+    ) -> list[DetectionResult]:
         """
-        Run detection and overlap resolution without mutating the registry.
+        Run detection with a custom minimum confidence floor and overlap resolution.
 
-        Returns overlap-resolved DetectionResults with confidence >= threshold
-        and placeholder=None.  Suitable for dry-run preview, benchmarking, or
-        any consumer that wants to inspect what would be redacted.
+        Returns non-overlapping DetectionResults above min_confidence with
+        placeholder=None.  Used by the interactive review flow in main.py, and
+        by any consumer (e.g. Neech) that wants candidates below the auto-redact
+        threshold for display or triage.
 
-        Does NOT assign placeholders — call run() for the full pipeline.
+        Does NOT assign placeholders.
         """
-        threshold = self._threshold
         candidates: list[DetectionResult] = []
         for detector in self._detectors:
             for r in detector.detect(text):
-                if r.confidence >= threshold:
+                if r.confidence >= min_confidence:
                     candidates.append(r)
         return _resolve_overlaps(candidates)
+
+    def detect_resolved(self, text: str) -> list[DetectionResult]:
+        """
+        Run detection and overlap resolution above the auto-redact threshold.
+
+        Returns overlap-resolved DetectionResults with confidence >= auto_redact
+        threshold and placeholder=None.  Suitable for dry-run preview, benchmarking,
+        or any consumer that wants to inspect what would be auto-redacted.
+
+        Does NOT assign placeholders — call run() for the full pipeline.
+        """
+        return self.detect_candidates(text, self._threshold)
 
     def run(self, text: str) -> tuple[str, dict[str, str]]:
         """

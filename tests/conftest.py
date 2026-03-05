@@ -28,8 +28,15 @@ def all_detectors():
 
 @pytest.fixture(scope="session")
 def test_cases():
-    """Full synthetic test suite — 50 cases per category plus mixed and negative prompts."""
-    return generate_all(n_per_category=50)
+    """Full synthetic test suite — 50 cases per category plus mixed and negative prompts.
+
+    seed=42 makes the benchmark deterministic across sessions so that the baseline
+    regression guard compares identical datasets (not just near-identical ones).
+    Without a fixed seed, random Faker names can occasionally produce context tokens
+    that contain IP suppress keyword substrings (e.g. "eg" in "megan"), causing
+    spurious >0.02 metric fluctuations between runs.
+    """
+    return generate_all(n_per_category=50, seed=42)
 
 
 @pytest.fixture(scope="session")

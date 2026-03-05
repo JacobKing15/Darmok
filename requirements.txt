@@ -2,3 +2,5 @@ pyyaml
 faker
 pytest
 rich
+argon2-cffi
+cryptography
